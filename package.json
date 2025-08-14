@@ -1,0 +1,32 @@
+{
+  "name": "salmanplex",
+  "version": "1.0.0",
+  "description": "A Plex-like media server web application",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest"
+  },
+  "keywords": [
+    "media-server",
+    "streaming",
+    "plex",
+    "video"
+  ],
+  "author": "Salman Yahya",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "helmet": "^7.0.0",
+    "mongoose": "^7.5.0",
+    "pg": "^8.16.3",
+    "sequelize": "^6.37.7"
+  },
+  "devDependencies": {
+    "jest": "^29.6.2",
+    "nodemon": "^3.0.1"
+  }
+}
