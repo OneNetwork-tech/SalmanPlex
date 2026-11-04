@@ -1,28 +1,36 @@
-# Use Node.js 18 as base image
-FROM node:18-alpine
+# syntax=docker/dockerfile:1
 
-# Set working directory
-WORKDIR /usr/src/app
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
-# Copy package files
-COPY package*.json ./
+FROM node:22-alpine
+# ffmpeg provides ffprobe (metadata) and ffmpeg (HLS transcoding, thumbnails).
+# tini reaps ffmpeg children and forwards signals for graceful shutdown.
+RUN apk add --no-cache ffmpeg tini \
+  && addgroup -S -g 1001 salmanplex \
+  && adduser -S -u 1001 -G salmanplex salmanplex \
+  && mkdir -p /media /cache \
+  && chown salmanplex:salmanplex /media /cache
 
-# Install dependencies
-RUN npm ci --only=production
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=3000 \
+    MEDIA_ROOT=/media \
+    CACHE_DIR=/cache
 
-# Copy application code
-COPY . .
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
+COPY src ./src
+COPY public ./public
 
-# Expose port
+USER salmanplex
 EXPOSE 3000
+VOLUME ["/media", "/cache"]
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
 
-# Change ownership of app directory
-RUN chown -R nextjs:nodejs /usr/src/app
-USER nextjs
-
-# Start the application
-CMD [ "npm", "start" ]
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "src/server.js"]

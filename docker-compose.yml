@@ -1,28 +1,53 @@
-version: '3.8'
+# Usage:
+#   cp .env.example .env   # then set JWT_SECRET and POSTGRES_PASSWORD
+#   docker compose up -d --build
+# Put your media in ./media (or change MEDIA_PATH in .env).
 
 services:
   app:
     build: .
-    ports:
-      - "3000:3000"
+    image: salmanplex:local
+    restart: unless-stopped
+    env_file: .env
     environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - MONGODB_URI=mongodb://mongo:27017/salmanplex
-    volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
-    depends_on:
-      - mongo
-    restart: unless-stopped
-
-  mongo:
-    image: mongo:6-jammy
+      NODE_ENV: production
+      PORT: 3000
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      MEDIA_ROOT: /media
+      CACHE_DIR: /cache
     ports:
-      - "27017:27017"
+      - "${HOST_PORT:-3000}:3000"
     volumes:
-      - mongo_data:/data/db
+      # Mount read-only (":ro") if you don't need uploads/deletes from the web UI.
+      - ${MEDIA_PATH:-./media}:/media
+      - cache:/cache
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+
+  db:
+    image: postgres:16-alpine
     restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-salmanplex}
+      POSTGRES_USER: ${POSTGRES_USER:-salmanplex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # The database is only reachable from the app container (no published port).
 
 volumes:
-  mongo_data:
+  pgdata:
+  cache:

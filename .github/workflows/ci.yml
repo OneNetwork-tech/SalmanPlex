@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, postgres]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: salmanplex
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: salmanplex_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U salmanplex"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: npm ci
+      - run: npm run check
+      - name: Test (${{ matrix.database }})
+        run: npm test -- --ci
+        env:
+          TEST_DATABASE_URL: ${{ matrix.database == 'postgres' && 'postgres://salmanplex:ci-password@localhost:5432/salmanplex_test' || '' }}
+      - name: Audit production dependencies
+        if: matrix.database == 'sqlite'
+        run: npm audit --omit=dev --audit-level=high
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t salmanplex:ci .
+      - name: Smoke test image
+        run: |
+          docker network create sp
+          docker run -d --name db --network sp -e POSTGRES_USER=sp -e POSTGRES_PASSWORD=sp -e POSTGRES_DB=sp postgres:16-alpine
+          for i in $(seq 1 30); do docker exec db pg_isready -U sp && break; sleep 1; done
+          docker run -d --name app --network sp -p 3000:3000 \
+            -e JWT_SECRET=ci-secret-ci-secret-ci-secret-ci-secret-1234 \
+            -e DATABASE_URL=postgres://sp:sp@db:5432/sp salmanplex:ci
+          for i in $(seq 1 30); do curl -fsS http://localhost:3000/api/health && exit 0; sleep 1; done
+          docker logs app
+          exit 1

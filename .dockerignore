@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log*
+.git
+.github
+.env
+.env.*
+!.env.example
+.cache
+media
+coverage
+tests
+k8s
+*.md
+Dockerfile
+docker-compose*.yml

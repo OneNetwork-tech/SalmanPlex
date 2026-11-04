@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111318">
+  <meta name="color-scheme" content="dark">
+  <title>SalmanPlex</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/vendor/hls.min.js" defer></script>
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <header class="topbar" id="topbar" hidden>
+    <button class="icon-btn menu-btn" id="menu-btn" aria-label="Toggle navigation">☰</button>
+    <a class="brand" href="#/">Salman<span>Plex</span></a>
+    <form class="search" id="search-form" role="search">
+      <input id="search-input" type="search" placeholder="Search movies, shows, music…" aria-label="Search" autocomplete="off">
+    </form>
+    <div class="user-menu">
+      <a href="#/account" id="user-name" class="user-name"></a>
+      <button class="btn btn-ghost" id="logout-btn" type="button">Sign out</button>
+    </div>
+  </header>
+  <div class="layout">
+    <nav class="sidebar" id="sidebar" hidden aria-label="Main">
+      <a href="#/" data-nav="home">🏠 Home</a>
+      <a href="#/favorites" data-nav="favorites">★ Favorites</a>
+      <a href="#/history" data-nav="history">🕘 History</a>
+      <div class="sidebar-heading">Libraries</div>
+      <div id="library-links"></div>
+      <div class="sidebar-heading admin-only">Manage</div>
+      <a href="#/admin" class="admin-only" data-nav="admin">⚙ Admin</a>
+    </nav>
+    <main id="view" class="view" tabindex="-1"></main>
+  </div>
+  <div class="mini-player" id="mini-player" hidden>
+    <img class="mini-art" id="mini-art" alt="">
+    <div class="mini-info">
+      <div class="mini-title" id="mini-title"></div>
+      <div class="mini-sub" id="mini-sub"></div>
+    </div>
+    <div class="mini-controls">
+      <button class="icon-btn" id="mini-prev" aria-label="Previous">⏮</button>
+      <button class="icon-btn" id="mini-toggle" aria-label="Play/Pause">⏯</button>
+      <button class="icon-btn" id="mini-next" aria-label="Next">⏭</button>
+      <button class="icon-btn" id="mini-close" aria-label="Close player">✕</button>
+    </div>
+    <input class="mini-seek" id="mini-seek" type="range" min="0" max="1000" value="0" aria-label="Seek">
+    <audio id="audio" preload="metadata"></audio>
+  </div>
+  <div class="toast-container" id="toasts" aria-live="polite"></div>
+</body>
+</html>
