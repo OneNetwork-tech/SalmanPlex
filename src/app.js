@@ -29,10 +29,11 @@ function createApp() {
         'connect-src': ["'self'"],
         'object-src': ["'none'"],
         'frame-ancestors': ["'none'"],
-        'upgrade-insecure-requests': config.isProduction ? [] : null,
+        'upgrade-insecure-requests': config.httpsOnly ? [] : null,
       },
     },
     crossOriginEmbedderPolicy: false,
+    strictTransportSecurity: config.httpsOnly,
     // Allow casting devices / other origins to fetch media when CORS permits.
     crossOriginResourcePolicy: { policy: config.corsOrigins.length ? 'cross-origin' : 'same-origin' },
   }));

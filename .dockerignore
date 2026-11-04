@@ -13,3 +13,4 @@ k8s
 *.md
 Dockerfile
 docker-compose*.yml
+deploy

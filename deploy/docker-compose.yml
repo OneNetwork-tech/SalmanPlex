@@ -1,0 +1,51 @@
+# Runs the image published by CI (nothing is built on the server).
+#   cp .env.example .env   # fill in the secrets
+#   ./deploy.sh            # or: ./deploy.sh sha-1a2b3c4
+name: salmanplex
+
+services:
+  app:
+    image: ghcr.io/onenetwork-tech/salmanplex:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      MEDIA_ROOT: /media
+      CACHE_DIR: /cache
+    ports:
+      - "${HOST_PORT:-3001}:3000"
+    volumes:
+      # Add ":ro" if you don't need uploads/deletes from the web UI.
+      - ${MEDIA_PATH:-./media}:/media
+      - cache:/cache
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-salmanplex}
+      POSTGRES_USER: ${POSTGRES_USER:-salmanplex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
+  cache:

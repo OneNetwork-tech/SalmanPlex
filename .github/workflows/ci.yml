@@ -2,8 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
+    tags: ['v*']
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -62,3 +64,72 @@ jobs:
           for i in $(seq 1 30); do curl -fsS http://localhost:3000/api/health && exit 0; sleep 1; done
           docker logs app
           exit 1
+
+  # CD part 1: every push (any branch, v* tags) publishes the image to GitHub Container Registry.
+  #   ghcr.io/<owner>/salmanplex:<branch>   e.g. claude-charming-noether-lhy664
+  #   ghcr.io/<owner>/salmanplex:sha-<7>    one per commit
+  #   ghcr.io/<owner>/salmanplex:latest     default branch only
+  publish:
+    if: github.event_name != 'pull_request'
+    needs: docker
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/salmanplex
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=salmanplex
+          cache-to: type=gha,mode=max,scope=salmanplex
+
+  # CD part 2 (optional): deploy to your own server through a self-hosted runner with the
+  # label "local-server". Turn it on by setting the repository variable LOCAL_DEPLOY_BRANCH
+  # to the branch that should auto-deploy. The server keeps its secrets in
+  # $LOCAL_DEPLOY_DIR/.env (default ~/apps/salmanplex), created once from deploy/.env.example.
+  deploy-local:
+    if: github.event_name == 'push' && vars.LOCAL_DEPLOY_BRANCH == github.ref_name
+    needs: publish
+    runs-on: [self-hosted, local-server]
+    concurrency: deploy-local-salmanplex
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Deploy
+        env:
+          LOCAL_DEPLOY_DIR: ${{ vars.LOCAL_DEPLOY_DIR }}
+        run: |
+          DIR="${LOCAL_DEPLOY_DIR:-$HOME/apps/salmanplex}"
+          mkdir -p "$DIR"
+          cp deploy/docker-compose.yml deploy/deploy.sh deploy/.env.example "$DIR/"
+          if [ ! -f "$DIR/.env" ]; then
+            echo "::error::Create $DIR/.env on the server (copy .env.example and fill in the secrets)"
+            exit 1
+          fi
+          "$DIR/deploy.sh" "sha-${GITHUB_SHA::7}"

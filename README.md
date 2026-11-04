@@ -25,6 +25,67 @@ docker compose up -d --build
 
 Open <http://localhost:3000> and create the administrator account. In **Admin → Libraries**, add a library for each folder (paths are relative to the media root, for example `Movies`).
 
+## Deploy to your own server (CI/CD with Docker)
+
+Every push to GitHub runs the tests and, if they pass, publishes the Docker image to GitHub Container Registry:
+
+| Tag | Points to |
+|---|---|
+| `latest` | the newest build of the default branch |
+| `<branch>` | the newest build of a branch, e.g. `claude-charming-noether-lhy664` (`/` becomes `-`) |
+| `sha-<7 chars>` | one exact commit |
+| `1.2.3` | a `v1.2.3` git tag |
+
+Image: `ghcr.io/onenetwork-tech/salmanplex`.
+
+The server needs nothing except Docker with the Compose plugin. Nothing is built there.
+
+**One-time setup on the server**
+
+1. Log in to the registry with a GitHub token that has `read:packages`. Packages are private unless you make them public under the repository's *Packages*.
+
+   ```bash
+   docker login ghcr.io -u <your-github-username>
+   ```
+
+2. Copy the deploy files from this repository and create the settings file:
+
+   ```bash
+   mkdir -p ~/apps/salmanplex && cd ~/apps/salmanplex
+   # copy deploy/docker-compose.yml, deploy/deploy.sh and deploy/.env.example here, then:
+   cp .env.example .env
+   ```
+
+3. Fill in `.env`. Generate the secrets with `openssl` as the comments say, and set `IMAGE_TAG` to `latest` or to a branch tag.
+
+**Deploy or update**
+
+```bash
+./deploy.sh                # pull IMAGE_TAG from .env and restart
+./deploy.sh sha-1a2b3c4    # roll forward or back to one exact build
+```
+
+`deploy.sh` pulls the image, restarts the stack, waits until `/api/health` reports healthy, and prints the logs if it doesn't. Data is kept in Docker volumes across updates. To start from scratch, run `docker compose down -v`, which deletes all data.
+
+**Plain HTTP on a LAN.** The app is HTTPS-only in production by default. When you test it as `http://<server-ip>:<port>`, keep `HTTPS_ONLY=false` in `.env` as the example has it. Otherwise the browser tries to load the app's scripts over HTTPS and the page stays blank. Once a TLS reverse proxy (Caddy, Traefik, nginx) is in front, switch it back.
+
+**Automatic deploys (optional).** CI can deploy every push of one branch to your server:
+
+1. On the server, install a [self-hosted GitHub Actions runner](https://docs.github.com/actions/hosting-your-own-runners) for this repository and give it the label `local-server`. The runner's user must be allowed to run `docker`.
+2. Create `~/apps/salmanplex/.env` on the server once, as above.
+3. In the repository's *Settings → Secrets and variables → Actions → Variables*, set `LOCAL_DEPLOY_BRANCH` to the branch to deploy, for example `main`. Set `LOCAL_DEPLOY_DIR` too if you use a different folder.
+
+The `deploy-local` job then runs `deploy.sh` with the exact image CI just built (`sha-…`). It is skipped when `LOCAL_DEPLOY_BRANCH` isn't set.
+
+**Running all four apps on one server.** The deploy files use different ports, so SalmanPlex, BoklyAI, RentalHive and Nikah Noor can run side by side:
+
+| App | Port(s) | Health check |
+|---|---|---|
+| SalmanPlex | 3001 | `/api/health` |
+| BoklyAI | 3002 | `/api/health` |
+| RentalHive | 8081 (web), 8082 (API) | `/health` |
+| Nikah Noor | 8083 | `/health` |
+
 ## Local development
 
 Requirements: Node.js 20 or newer, PostgreSQL 13 or newer, and ffmpeg/ffprobe on `PATH`. Without ffmpeg the server still runs, but you lose transcoding, thumbnails and codec detection.
