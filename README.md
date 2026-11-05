@@ -40,6 +40,15 @@ Image: `ghcr.io/onenetwork-tech/salmanplex`.
 
 The server needs nothing except Docker with the Compose plugin. Nothing is built there.
 
+**Quick test on your own computer.** In the `deploy` folder (or a copy of it):
+
+```bash
+./setup-local.sh claude-charming-noether-lhy664   # creates .env with random secrets; use "latest" once merged
+./deploy.sh
+```
+
+Then open http://localhost:3001. The first account you create becomes the administrator. To start over, run `docker compose down -v && rm .env`.
+
 **One-time setup on the server**
 
 1. Log in to the registry with a GitHub token that has `read:packages`. Packages are private unless you make them public under the repository's *Packages*.
