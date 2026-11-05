@@ -15,7 +15,7 @@ umask 077
 
 envval() {
   local v
-  v=$(grep -E "^$1=" .env | tail -n 1 | cut -d= -f2- | tr -d '"' || true)
+  v=$(grep -E "^$1=" .env | tail -n 1 | cut -d= -f2- | tr -d '"\r' || true)
   echo "${v:-$2}"
 }
 

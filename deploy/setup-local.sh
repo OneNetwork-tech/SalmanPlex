@@ -11,11 +11,12 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 if [ -f .env ]; then
-  echo "$(pwd)/.env already exists. Delete it (and run 'docker compose down -v' to wipe the data) to start over." >&2
-  exit 1
+  echo "Keeping the existing $(pwd)/.env (to start over: docker compose down -v && rm .env)."
+  exit 0
 fi
 
-cp .env.example .env
+# tr: drop Windows line endings, in case git checked the files out with CRLF.
+tr -d '\r' < .env.example > .env
 chmod 600 .env
 
 # Sets NAME=VALUE in .env (replaces an existing line, or appends one). Works with GNU and BSD sed.
