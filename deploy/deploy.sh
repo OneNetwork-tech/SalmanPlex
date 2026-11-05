@@ -5,6 +5,7 @@
 #   ./deploy.sh                # deploys IMAGE_TAG from .env (default: latest)
 #   ./deploy.sh sha-1a2b3c4    # deploys one specific build
 #   SKIP_PULL=1 ./deploy.sh    # restart with images already on this machine
+#   BUILD=1 ./deploy.sh        # build the images from this repository (no registry login needed)
 #
 # Private images: run `docker login ghcr.io` once with a token that has read:packages.
 set -euo pipefail
@@ -27,8 +28,18 @@ if [ $# -gt 0 ]; then
 fi
 echo "Deploying SalmanPlex (image tag: ${IMAGE_TAG:-$(envval IMAGE_TAG latest)})"
 
-if [ "${SKIP_PULL:-0}" != "1" ]; then
-  docker compose pull
+if [ "${BUILD:-0}" = "1" ]; then
+  echo "Building the images from source (the first build takes a few minutes)"
+  docker compose build
+elif [ "${SKIP_PULL:-0}" != "1" ]; then
+  if ! docker compose pull; then
+    echo "" >&2
+    echo "Could not download the images. Either:" >&2
+    echo "  - log in once: docker login ghcr.io -u <github-username>  (password: a token with read:packages)" >&2
+    echo "  - check IMAGE_TAG in .env (a branch name with / replaced by -, or latest once merged)" >&2
+    echo "  - or build them on this computer instead: BUILD=1 ./deploy.sh" >&2
+    exit 1
+  fi
 fi
 docker compose up -d --remove-orphans
 

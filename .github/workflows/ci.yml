@@ -65,6 +65,26 @@ jobs:
           docker logs app
           exit 1
 
+  # The README's "quick test on your own computer", run on a clean machine:
+  # setup-local.sh + BUILD=1 deploy.sh, then the pages must load on localhost.
+  quickstart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: setup-local.sh and BUILD=1 deploy.sh
+        working-directory: deploy
+        run: |
+          ./setup-local.sh
+          BUILD=1 ./deploy.sh
+      - name: Pages load on localhost
+        run: |
+          curl -fsS http://localhost:3001/api/auth/setup-status
+          curl -fsS http://localhost:3001/ | grep -q SalmanPlex
+      - name: Logs on failure
+        if: failure()
+        working-directory: deploy
+        run: docker compose logs --tail=200
+
   # CD part 1: every push (any branch, v* tags) publishes the image to GitHub Container Registry.
   #   ghcr.io/<owner>/salmanplex:<branch>   e.g. claude-charming-noether-lhy664
   #   ghcr.io/<owner>/salmanplex:sha-<7>    one per commit

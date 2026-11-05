@@ -6,6 +6,8 @@ name: salmanplex
 services:
   app:
     image: ghcr.io/onenetwork-tech/salmanplex:${IMAGE_TAG:-latest}
+    # BUILD=1 ./deploy.sh builds this image from the source in this repository instead of pulling it.
+    build: ..
     restart: unless-stopped
     env_file: .env
     environment:
