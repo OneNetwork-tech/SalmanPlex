@@ -127,7 +127,7 @@ jobs:
         run: |
           DIR="${LOCAL_DEPLOY_DIR:-$HOME/apps/salmanplex}"
           mkdir -p "$DIR"
-          cp deploy/docker-compose.yml deploy/deploy.sh deploy/.env.example "$DIR/"
+          cp deploy/docker-compose.yml deploy/*.sh deploy/.env.example deploy/Caddyfile.example "$DIR/"
           if [ ! -f "$DIR/.env" ]; then
             echo "::error::Create $DIR/.env on the server (copy .env.example and fill in the secrets)"
             exit 1

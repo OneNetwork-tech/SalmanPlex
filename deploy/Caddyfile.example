@@ -1,0 +1,14 @@
+# HTTPS for this app with Caddy (https://caddyserver.com), installed on the same server.
+# Caddy gets and renews Let's Encrypt certificates automatically.
+#
+# 1. Point the domain's DNS A/AAAA record at this server and open ports 80 and 443.
+# 2. Replace the domain below, copy this to /etc/caddy/Caddyfile (or add it to your
+#    existing one), then: sudo systemctl reload caddy
+# 3. In .env, enable the "Behind an HTTPS reverse proxy" settings and run ./deploy.sh.
+#
+# Running several apps? Put all their blocks in the same Caddyfile.
+
+media.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3001
+}

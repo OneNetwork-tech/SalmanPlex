@@ -29,3 +29,4 @@ Thumbs.db
 
 # Server secrets for deploy/
 deploy/.env
+deploy/backups/

@@ -69,6 +69,30 @@ The server needs nothing except Docker with the Compose plugin. Nothing is built
 
 **Plain HTTP on a LAN.** The app is HTTPS-only in production by default. When you test it as `http://<server-ip>:<port>`, keep `HTTPS_ONLY=false` in `.env` as the example has it. Otherwise the browser tries to load the app's scripts over HTTPS and the page stays blank. Once a TLS reverse proxy (Caddy, Traefik, nginx) is in front, switch it back.
 
+**Going public with HTTPS.** `deploy/Caddyfile.example` puts [Caddy](https://caddyserver.com) in front of the app. Caddy gets and renews Let's Encrypt certificates automatically.
+
+1. Point the domain's DNS A/AAAA record at the server and open ports 80 and 443.
+2. Install Caddy, replace `media.example.com` in the example, copy it to `/etc/caddy/Caddyfile`, then run `sudo systemctl reload caddy`.
+3. In `.env`, turn on the settings under "Behind an HTTPS reverse proxy": `HTTPS_ONLY=true`, `TRUST_PROXY=loopback, 172.16.0.0/12` and `BIND_ADDRESS=127.0.0.1`. Then run `./deploy.sh`.
+
+`BIND_ADDRESS=127.0.0.1` means only Caddy can reach the app, so plain `http://<server-ip>:3001` stops working.
+
+**Backups.** `./backup.sh` saves the database (users, libraries, watch progress) and `.env` to `backups/<timestamp>/`, and keeps the newest 14. Your media folder is not copied, so back it up with your usual tools.
+
+- Schedule it nightly with cron, for example `15 3 * * * cd ~/apps/salmanplex && ./backup.sh >> backups/backup.log 2>&1`.
+- Copy the `backups` folder off the server.
+- The backups contain secrets and personal data, so keep them private.
+
+To restore onto the same or a new server:
+
+```bash
+cp backups/<timestamp>/env .env    # only on a new server
+docker compose up -d db
+./restore.sh backups/<timestamp>
+```
+
+`restore.sh` replaces the current data, so it asks you to confirm first.
+
 **Automatic deploys (optional).** CI can deploy every push of one branch to your server:
 
 1. On the server, install a [self-hosted GitHub Actions runner](https://docs.github.com/actions/hosting-your-own-runners) for this repository and give it the label `local-server`. The runner's user must be allowed to run `docker`.

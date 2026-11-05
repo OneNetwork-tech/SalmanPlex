@@ -16,7 +16,7 @@ services:
       MEDIA_ROOT: /media
       CACHE_DIR: /cache
     ports:
-      - "${HOST_PORT:-3001}:3000"
+      - "${BIND_ADDRESS:-0.0.0.0}:${HOST_PORT:-3001}:3000"
     volumes:
       # Add ":ro" if you don't need uploads/deletes from the web UI.
       - ${MEDIA_PATH:-./media}:/media
